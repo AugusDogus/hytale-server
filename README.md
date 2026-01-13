@@ -1,6 +1,6 @@
 # Hytale Server Docker
 
-A Docker image for running a dedicated Hytale server.
+A Docker image for running a dedicated Hytale server. See the [official Hytale Server Manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual) for more details.
 
 ## Quick Start
 
