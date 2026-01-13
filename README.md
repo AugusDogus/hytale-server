@@ -1,271 +1,134 @@
 # Hytale Server Docker
 
-A Docker image for running a dedicated Hytale server, with configuration style inspired by [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server).
+A Docker image for running a dedicated Hytale server.
 
 ## Quick Start
 
 ```bash
-docker compose up -d
+# Build
+docker build -t hytale-server .
+
+# Run (first time - interactive for authentication)
+docker run -it --name hytale-server \
+  -p 5520:5520/udp \
+  -v hytale-data:/data \
+  -v hytale-game:/opt/hytale/game \
+  -v hytale-downloader:/opt/hytale/downloader \
+  hytale-server
 ```
 
-On first run, authenticate interactively:
+## First-Time Setup
+
+You'll need to authenticate **twice**:
+
+### 1. Downloader Authentication
+On first run, you'll see:
+```
+Visit: https://accounts.hytale.com/device
+Enter code: XXXX-XXXX
+```
+Complete this in your browser. The game files will download automatically.
+
+### 2. Server Authentication
+Once the server starts, run in the console:
+```
+/auth login device
+```
+Complete the device auth again, then **persist the credentials**:
+```
+/auth persistence Encrypted
+```
+
+Now you can detach (`Ctrl+P`, `Ctrl+Q`) and the server will stay authenticated across restarts.
+
+## Running After Setup
 
 ```bash
-docker compose run -it hytale
+# Start
+docker start hytale-server
+
+# Stop
+docker stop hytale-server
+
+# View logs
+docker logs -f hytale-server
+
+# Access console
+docker attach hytale-server
+# Detach: Ctrl+P, Ctrl+Q
 ```
-
-Follow the prompts to authenticate at `https://accounts.hytale.com/device`.
-
-## Important Differences from Minecraft
-
-| Feature | Minecraft (itzg) | Hytale |
-|---------|------------------|--------|
-| Protocol | TCP | **UDP (QUIC)** |
-| Default Port | 25565 | **5520** |
-| Min RAM | 1GB | **4GB** |
-| View Distance | 10 chunks (160 blocks) | 12 chunks (384 blocks) ≈ 24 MC chunks |
-| RCON | Built-in | Not available |
-| Config | server.properties | **JSON files** |
 
 ## Environment Variables
 
-### General Options
-
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `UID` | Linux user ID | `1000` |
-| `GID` | Linux group ID | `1000` |
-| `MEMORY` | Java heap size | `4G` |
-| `INIT_MEMORY` | Initial heap (overrides MEMORY) | |
-| `MAX_MEMORY` | Max heap (overrides MEMORY) | |
-| `TZ` | Timezone | `UTC` |
-| `JVM_OPTS` | Additional JVM options | |
-| `JVM_XX_OPTS` | JVM -XX options | |
+| `MEMORY` | Java heap size (min 4GB recommended) | `4G` |
+| `SERVER_PORT` | UDP port | `5520` |
+| `ENABLE_BACKUP` | Enable automatic backups | `false` |
+| `BACKUP_INTERVAL` | Minutes between backups | `30` |
+| `DISABLE_SENTRY` | Disable crash reporting | `false` |
+| `AUTH_MODE` | `authenticated` or `offline` | `authenticated` |
 
-### Download Options
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AUTO_DOWNLOAD` | Download server files automatically | `true` |
-| `PATCHLINE` | `release` or `pre-release` | `release` |
-| `SETUP_ONLY` | Download only, don't start server | `false` |
-
-### Server Options
-
-These map directly to Hytale server arguments:
-
-| Variable | Server Flag | Description | Default |
-|----------|-------------|-------------|---------|
-| `SERVER_PORT` | `--bind` | UDP port | `5520` |
-| `AUTH_MODE` | `--auth-mode` | `authenticated` or `offline` | `authenticated` |
-| `ALLOW_OP` | `--allow-op` | Enable operator commands | `false` |
-| `ENABLE_BACKUP` | `--backup` | Enable automatic backups | `false` |
-| `BACKUP_INTERVAL` | `--backup-frequency` | Minutes between backups | `30` |
-| `DISABLE_SENTRY` | `--disable-sentry` | Disable crash reporting | `false` |
-| `ACCEPT_EARLY_PLUGINS` | `--accept-early-plugins` | Allow experimental plugins | `false` |
-| `EXTRA_ARGS` | | Additional server arguments | |
-
-## Configuration Files
-
-Unlike Minecraft's `server.properties`, Hytale uses **JSON files** for configuration. These are created by the server on first run:
-
-| File | Description |
-|------|-------------|
-| `config.json` | Server configuration |
-| `permissions.json` | Permission configuration |
-| `whitelist.json` | Whitelisted players |
-| `bans.json` | Banned players |
-
-To customize, mount your own files:
-
-```yaml
-volumes:
-  - ./whitelist.json:/data/whitelist.json
-  - ./permissions.json:/data/permissions.json
+Example with options:
+```bash
+docker run -it --name hytale-server \
+  -p 5520:5520/udp \
+  -v hytale-data:/data \
+  -v hytale-game:/opt/hytale/game \
+  -v hytale-downloader:/opt/hytale/downloader \
+  -e MEMORY=6G \
+  -e ENABLE_BACKUP=true \
+  hytale-server
 ```
 
-## Examples
+## Firewall
 
-### Basic Server
-
-```yaml
-services:
-  hytale:
-    image: hytale-server
-    ports:
-      - "5520:5520/udp"
-    environment:
-      MEMORY: "4G"
-    volumes:
-      - data:/data
-volumes:
-  data:
-```
-
-### Development Server
-
-```yaml
-services:
-  hytale:
-    image: hytale-server
-    ports:
-      - "5520:5520/udp"
-    environment:
-      MEMORY: "4G"
-      DISABLE_SENTRY: "true"        # Don't report dev crashes
-      ACCEPT_EARLY_PLUGINS: "true"  # Allow experimental plugins
-      PATCHLINE: "pre-release"      # Use pre-release builds
-    volumes:
-      - data:/data
-      - ./mods:/data/mods           # Mount local mods folder
-volumes:
-  data:
-```
-
-### Server with Backups
-
-```yaml
-services:
-  hytale:
-    image: hytale-server
-    ports:
-      - "5520:5520/udp"
-    environment:
-      MEMORY: "6G"
-      ENABLE_BACKUP: "true"
-      BACKUP_INTERVAL: "30"  # Every 30 minutes
-    volumes:
-      - data:/data
-volumes:
-  data:
-```
-
-### Offline Mode (No Authentication)
-
-```yaml
-services:
-  hytale:
-    image: hytale-server
-    ports:
-      - "5520:5520/udp"
-    environment:
-      MEMORY: "4G"
-      AUTH_MODE: "offline"
-    volumes:
-      - data:/data
-volumes:
-  data:
-```
-
-## Memory Recommendations
-
-Hytale requires **at least 4GB RAM**. The default view distance (384 blocks / 12 chunks) is equivalent to ~24 Minecraft chunks, so expect higher memory usage than Minecraft.
-
-| Use Case | Recommended |
-|----------|-------------|
-| Testing / Development | 4GB |
-| Small server (1-5 players) | 4-6GB |
-| Medium server (5-20 players) | 6-8GB |
-| Large server (20+ players) | 8GB+ |
-
-## Volumes
-
-| Volume | Path | Description |
-|--------|------|-------------|
-| `data` | `/data` | Server data (universe, mods, logs, configs) |
-| `game` | `/opt/hytale/game` | Downloaded game files |
-| `downloader` | `/opt/hytale/downloader` | OAuth credentials |
-
-### Data Directory Structure
-
-```
-/data/
-├── universe/       # World saves
-├── mods/           # Installed mods
-├── logs/           # Server logs
-├── backups/        # Automatic backups (if enabled)
-├── .cache/         # Optimized file cache
-├── config.json     # Server configuration
-├── permissions.json
-├── whitelist.json
-└── bans.json
-```
-
-## Sending Commands
-
-Hytale doesn't have RCON. Use `docker attach` to access the console:
+Hytale uses **UDP** (not TCP):
 
 ```bash
-# Attach to console
-docker attach hytale-server
-
-# Type commands
-/help
-
-# Detach WITHOUT stopping: Ctrl+P, Ctrl+Q
-```
-
-## Firewall Configuration
-
-**Hytale uses UDP, not TCP!**
-
-```bash
-# UFW (Ubuntu)
+# Ubuntu/Debian
 sudo ufw allow 5520/udp
 
-# iptables
+# Or iptables
 sudo iptables -A INPUT -p udp --dport 5520 -j ACCEPT
-
-# Windows PowerShell
-New-NetFirewallRule -DisplayName "Hytale Server" -Direction Inbound -Protocol UDP -LocalPort 5520 -Action Allow
 ```
 
-## Installing Mods
+## Docker Compose
 
-Download mods from [CurseForge](https://www.curseforge.com/hytale) and place in the mods directory:
+```yaml
+services:
+  hytale:
+    build: .
+    ports:
+      - "5520:5520/udp"
+    environment:
+      MEMORY: "4G"
+    volumes:
+      - data:/data
+      - game:/opt/hytale/game
+      - downloader:/opt/hytale/downloader
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
 
-```bash
-# Mount host directory
 volumes:
-  - ./mods:/data/mods
-
-# Or copy into container
-docker cp my-mod.jar hytale-server:/data/mods/
+  data:
+  game:
+  downloader:
 ```
-
-## Recommended Plugins
-
-From the [Hytale Server Manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual):
-
-| Plugin | Description |
-|--------|-------------|
-| [Nitrado:Query](https://github.com/nitrado/hytale-plugin-query) | Server status via HTTP |
-| [Nitrado:PerformanceSaver](https://github.com/nitrado/hytale-plugin-performance-saver) | Dynamic view distance |
-| [ApexHosting:PrometheusExporter](https://github.com/apexhosting/hytale-plugin-prometheus) | Metrics for monitoring |
 
 ## Troubleshooting
 
-### Re-authenticate Downloader
+**Players can't connect:**
+1. Check firewall allows **UDP** port 5520
+2. Ensure server is authenticated (`/auth status`)
+3. Run `/auth persistence Encrypted` if credentials aren't persisting
 
+**Re-authenticate downloader:**
 ```bash
-docker run --rm -v hytale-downloader:/downloader alpine \
-  rm -f /downloader/.hytale-downloader-credentials.json
-docker compose run -it hytale
-```
-
-### Players Can't Connect
-
-1. Verify **UDP** port forwarding (not TCP!)
-2. Check firewall allows UDP traffic
-3. Authenticate server: `/auth login device` in console
-
-### Check Logs
-
-```bash
-docker compose logs -f
-docker compose logs --tail 100
+docker run --rm -v hytale-downloader:/dl alpine rm -f /dl/.hytale-downloader-credentials.json
 ```
 
 ## License
 
-This Docker configuration is provided as-is. Hytale and related assets are property of Hypixel Studios.
+Hytale and related assets are property of Hypixel Studios.
