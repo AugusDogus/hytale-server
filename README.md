@@ -5,10 +5,19 @@ A Docker image for running a dedicated Hytale server.
 ## Quick Start
 
 ```bash
-# Build
-docker build -t hytale-server .
-
 # Run (first time - interactive for authentication)
+docker run -it --name hytale-server \
+  -p 5520:5520/udp \
+  -v hytale-data:/data \
+  -v hytale-game:/opt/hytale/game \
+  -v hytale-downloader:/opt/hytale/downloader \
+  ghcr.io/augusdogus/hytale-server
+```
+
+Or build locally:
+
+```bash
+docker build -t hytale-server .
 docker run -it --name hytale-server \
   -p 5520:5520/udp \
   -v hytale-data:/data \
@@ -78,7 +87,7 @@ docker run -it --name hytale-server \
   -v hytale-downloader:/opt/hytale/downloader \
   -e MEMORY=6G \
   -e ENABLE_BACKUP=true \
-  hytale-server
+  ghcr.io/augusdogus/hytale-server
 ```
 
 ## Firewall
@@ -98,7 +107,7 @@ sudo iptables -A INPUT -p udp --dport 5520 -j ACCEPT
 ```yaml
 services:
   hytale:
-    build: .
+    image: ghcr.io/augusdogus/hytale-server
     ports:
       - "5520:5520/udp"
     environment:
