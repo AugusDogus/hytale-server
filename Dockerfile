@@ -18,9 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# Create hytale user
-RUN groupadd -g 1000 hytale \
-    && useradd -u 1000 -g 1000 -d /data -s /bin/bash hytale
+# Create hytale user with UID/GID 1001 (1000 is taken by ubuntu in base image)
+RUN groupadd -g 1001 hytale \
+    && useradd -u 1001 -g 1001 -d /data -s /bin/bash hytale
 
 # Set working directory
 WORKDIR /data
@@ -42,8 +42,8 @@ RUN curl -fsSL https://downloader.hytale.com/hytale-downloader.zip -o /tmp/hytal
 # ============================================================================
 
 # User/Group configuration (itzg-style)
-ENV UID=1000
-ENV GID=1000
+ENV UID=1001
+ENV GID=1001
 
 # Memory configuration
 # Hytale requires at least 4GB - default view distance (384 blocks) equals ~24 Minecraft chunks
