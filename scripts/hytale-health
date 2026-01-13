@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Health check script for Hytale server
+# Returns 0 if server is healthy, 1 otherwise
+
+# Check if the Java process is running
+if pgrep -f "HytaleServer.jar" > /dev/null; then
+    exit 0
+else
+    exit 1
+fi
+
+# Future: Could integrate with Nitrado:Query plugin for more detailed health checks
+# if [ -n "${QUERY_PORT}" ]; then
+#     curl -sf "http://localhost:${QUERY_PORT}/health" > /dev/null
+# fi

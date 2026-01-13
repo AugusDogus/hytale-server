@@ -1,0 +1,67 @@
+#!/bin/bash
+set -e
+
+# Download game files using Hytale Downloader CLI
+
+SCRIPTS_DIR="$(dirname "$0")"
+
+# shellcheck source=start-utils
+. "${SCRIPTS_DIR}/start-utils"
+
+DOWNLOADER="/opt/hytale/downloader/hytale-downloader"
+CREDENTIALS_FILE="/opt/hytale/downloader/.hytale-downloader-credentials.json"
+GAME_DIR="/opt/hytale/game"
+
+log ""
+log "Downloading Hytale server files..."
+log "Patchline: ${PATCHLINE:-release}"
+log ""
+
+# Change to downloader directory so credentials are saved there
+cd /opt/hytale/downloader
+
+# Build download command arguments
+DOWNLOAD_ARGS="-download-path ${GAME_DIR}/game.zip -skip-update-check"
+
+# Add patchline if not release
+if [ "${PATCHLINE}" != "release" ] && [ -n "${PATCHLINE}" ]; then
+    DOWNLOAD_ARGS="${DOWNLOAD_ARGS} -patchline ${PATCHLINE}"
+fi
+
+# Check if we have cached credentials
+if [ -f "$CREDENTIALS_FILE" ]; then
+    log "Using cached credentials from previous authentication."
+else
+    log "=============================================="
+    log "AUTHENTICATION REQUIRED"
+    log "=============================================="
+    log ""
+    log "First-time setup: You'll see a URL and authorization code."
+    log "Open the URL in a browser to log in."
+    log ""
+    log "The tool will automatically detect when you've authenticated"
+    log "and start the download."
+    log ""
+    log "=============================================="
+fi
+
+log "Running: hytale-downloader ${DOWNLOAD_ARGS}"
+log ""
+
+# Run the downloader
+$DOWNLOADER $DOWNLOAD_ARGS
+
+# Extract the downloaded files
+if [ -f "${GAME_DIR}/game.zip" ]; then
+    log ""
+    log "Extracting game files..."
+    cd "${GAME_DIR}"
+    unzip -o game.zip
+    rm game.zip
+    log "Download and extraction complete!"
+else
+    logError "Download failed - game.zip not found"
+    exit 1
+fi
+
+cd /data

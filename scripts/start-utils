@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# Utility functions for Hytale server scripts
+# Inspired by itzg/minecraft-server
+
+# Logging with optional timestamp
+log() {
+    if isTrue "${LOG_TIMESTAMP}"; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+    else
+        echo "$*"
+    fi
+}
+
+logError() {
+    log "ERROR: $*" >&2
+}
+
+logWarn() {
+    log "WARN: $*"
+}
+
+logDebug() {
+    if isTrue "${DEBUG}"; then
+        log "DEBUG: $*"
+    fi
+}
+
+# Boolean check (itzg-style)
+isTrue() {
+    local value="${1,,}"  # lowercase
+    case "$value" in
+        true|yes|on|1)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+isFalse() {
+    ! isTrue "$1"
+}
+
+# Check if a file exists
+requireFile() {
+    if [ ! -f "$1" ]; then
+        logError "Required file not found: $1"
+        return 1
+    fi
+}
+
+# Wait for a file to exist
+waitForFile() {
+    local file="$1"
+    local timeout="${2:-60}"
+    local elapsed=0
+    
+    while [ ! -f "$file" ] && [ $elapsed -lt $timeout ]; do
+        sleep 1
+        ((elapsed++))
+    done
+    
+    [ -f "$file" ]
+}
+
+# Parse memory string (e.g., "2G" -> "2G", "2048M" -> "2048M")
+parseMemory() {
+    local mem="$1"
+    # Already in correct format
+    echo "$mem"
+}
+
+# Build JVM memory arguments
+buildMemoryArgs() {
+    local args=""
+    
+    if [ -n "${INIT_MEMORY}" ]; then
+        args="-Xms${INIT_MEMORY}"
+    elif [ -n "${MEMORY}" ]; then
+        args="-Xms${MEMORY}"
+    fi
+    
+    if [ -n "${MAX_MEMORY}" ]; then
+        args="${args} -Xmx${MAX_MEMORY}"
+    elif [ -n "${MEMORY}" ]; then
+        args="${args} -Xmx${MEMORY}"
+    fi
+    
+    echo "$args"
+}
+
+# Export functions for use in other scripts
+export -f log logError logWarn logDebug isTrue isFalse requireFile waitForFile parseMemory buildMemoryArgs

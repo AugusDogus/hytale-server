@@ -1,0 +1,47 @@
+#!/bin/bash
+set -e
+
+# Setup configuration and directory structure
+# Note: Hytale uses JSON config files, not CLI flags for whitelist/permissions
+
+SCRIPTS_DIR="$(dirname "$0")"
+
+# shellcheck source=start-utils
+. "${SCRIPTS_DIR}/start-utils"
+
+log "Setting up server directories..."
+
+# ============================================================================
+# Create data directory structure (matches Hytale file structure from manual)
+# ============================================================================
+
+# universe/ - World and player save data
+mkdir -p /data/universe
+
+# mods/ - Installed mods
+mkdir -p /data/mods
+
+# logs/ - Server log files
+mkdir -p /data/logs
+
+# .cache/ - Cache for optimized files
+mkdir -p /data/.cache
+
+# backups/ - For automatic backups if enabled
+if isTrue "${ENABLE_BACKUP}"; then
+    mkdir -p /data/backups
+fi
+
+# ============================================================================
+# Note about configuration files
+# ============================================================================
+# Hytale uses these JSON files for configuration (created by server on first run):
+#   - config.json       - Server configuration
+#   - permissions.json  - Permission configuration  
+#   - whitelist.json    - Whitelisted players
+#   - bans.json         - Banned players
+#
+# These are NOT configurable via CLI flags - edit the files directly or
+# mount custom configs into /data/
+
+log "Directory setup complete."

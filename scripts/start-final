@@ -1,0 +1,117 @@
+#!/bin/bash
+set -e
+
+# Final server launch script
+
+SCRIPTS_DIR="$(dirname "$0")"
+
+# shellcheck source=start-utils
+. "${SCRIPTS_DIR}/start-utils"
+
+GAME_DIR="/opt/hytale/game"
+SERVER_JAR="${GAME_DIR}/Server/HytaleServer.jar"
+AOT_CACHE="${GAME_DIR}/Server/HytaleServer.aot"
+ASSETS_PATH="${GAME_DIR}/Assets.zip"
+
+# ============================================================================
+# Build JVM arguments
+# ============================================================================
+
+JVM_ARGS=""
+
+# Memory settings (itzg-style)
+MEMORY_ARGS=$(buildMemoryArgs)
+if [ -n "$MEMORY_ARGS" ]; then
+    JVM_ARGS="${MEMORY_ARGS}"
+fi
+
+# Add -XX options first (JVM requirement)
+if [ -n "${JVM_XX_OPTS}" ]; then
+    JVM_ARGS="${JVM_ARGS} ${JVM_XX_OPTS}"
+fi
+
+# Add AOT cache if available (from Hytale manual - improves boot times)
+if [ -f "$AOT_CACHE" ]; then
+    log "Using AOT cache for faster startup"
+    JVM_ARGS="${JVM_ARGS} -XX:AOTCache=${AOT_CACHE}"
+fi
+
+# Add custom JVM options
+if [ -n "${JVM_OPTS}" ]; then
+    JVM_ARGS="${JVM_ARGS} ${JVM_OPTS}"
+fi
+
+# ============================================================================
+# Build server arguments (only actual Hytale server flags)
+# ============================================================================
+
+SERVER_ARGS=""
+
+# --assets (required)
+SERVER_ARGS="${SERVER_ARGS} --assets ${ASSETS_PATH}"
+
+# --bind (default: 0.0.0.0:5520)
+SERVER_ARGS="${SERVER_ARGS} --bind 0.0.0.0:${SERVER_PORT:-5520}"
+
+# --auth-mode (authenticated|offline)
+if [ "${AUTH_MODE}" = "offline" ]; then
+    SERVER_ARGS="${SERVER_ARGS} --auth-mode offline"
+fi
+
+# --allow-op
+if isTrue "${ALLOW_OP}"; then
+    SERVER_ARGS="${SERVER_ARGS} --allow-op"
+fi
+
+# --backup, --backup-frequency, --backup-dir
+if isTrue "${ENABLE_BACKUP}"; then
+    SERVER_ARGS="${SERVER_ARGS} --backup"
+    SERVER_ARGS="${SERVER_ARGS} --backup-frequency ${BACKUP_INTERVAL:-30}"
+    SERVER_ARGS="${SERVER_ARGS} --backup-dir /data/backups"
+fi
+
+# --disable-sentry (recommended for plugin development)
+if isTrue "${DISABLE_SENTRY}"; then
+    SERVER_ARGS="${SERVER_ARGS} --disable-sentry"
+fi
+
+# --accept-early-plugins
+if isTrue "${ACCEPT_EARLY_PLUGINS}"; then
+    SERVER_ARGS="${SERVER_ARGS} --accept-early-plugins"
+fi
+
+# Add extra arguments (passed directly to server)
+if [ -n "${EXTRA_ARGS}" ]; then
+    SERVER_ARGS="${SERVER_ARGS} ${EXTRA_ARGS}"
+fi
+
+# ============================================================================
+# Print startup info
+# ============================================================================
+
+log ""
+log "=============================================="
+log "Starting Hytale Server"
+log "=============================================="
+log ""
+log "Memory: ${MEMORY:-4G} (Hytale recommends at least 4GB)"
+log "Port: ${SERVER_PORT:-5520}/udp (QUIC protocol)"
+log "Auth Mode: ${AUTH_MODE:-authenticated}"
+log ""
+log "JVM Args: ${JVM_ARGS}"
+log "Server Args:${SERVER_ARGS}"
+log ""
+log "=============================================="
+log ""
+
+# ============================================================================
+# Change to data directory and start server
+# ============================================================================
+
+cd /data
+
+# Build final command
+CMD="java ${JVM_ARGS} -jar ${SERVER_JAR}${SERVER_ARGS}"
+
+# Execute the server
+exec ${CMD}

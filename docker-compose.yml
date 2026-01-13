@@ -1,0 +1,126 @@
+# Hytale Server Docker Compose
+# Configuration style inspired by itzg/minecraft-server
+
+services:
+  hytale:
+    build: .
+    image: hytale-server
+    container_name: hytale-server
+    restart: unless-stopped
+    stdin_open: true  # Required for console input
+    tty: true         # Required for console input
+    
+    # UDP port for QUIC protocol (NOT TCP like Minecraft!)
+    ports:
+      - "5520:5520/udp"
+    
+    environment:
+      # ============================================================
+      # GENERAL OPTIONS
+      # ============================================================
+      
+      # User/Group IDs (match your host user for volume permissions)
+      UID: "1000"
+      GID: "1000"
+      
+      # Memory - Hytale requires at least 4GB
+      # Default view distance (384 blocks) equals ~24 Minecraft chunks
+      MEMORY: "4G"
+      # Or set independently:
+      # INIT_MEMORY: "4G"
+      # MAX_MEMORY: "6G"
+      
+      # Timezone
+      TZ: "UTC"
+      
+      # ============================================================
+      # DOWNLOAD OPTIONS
+      # ============================================================
+      
+      # Automatically download server files
+      AUTO_DOWNLOAD: "true"
+      
+      # Patchline: "release" or "pre-release"
+      PATCHLINE: "release"
+      
+      # ============================================================
+      # SERVER OPTIONS (actual Hytale server flags)
+      # ============================================================
+      
+      # --bind port (UDP)
+      SERVER_PORT: "5520"
+      
+      # --auth-mode: "authenticated" or "offline"
+      AUTH_MODE: "authenticated"
+      
+      # --allow-op
+      ALLOW_OP: "false"
+      
+      # --backup, --backup-frequency
+      ENABLE_BACKUP: "false"
+      BACKUP_INTERVAL: "30"
+      
+      # --disable-sentry (recommended for plugin development)
+      DISABLE_SENTRY: "false"
+      
+      # --accept-early-plugins (required for early/experimental plugins)
+      ACCEPT_EARLY_PLUGINS: "false"
+      
+      # ============================================================
+      # ADVANCED OPTIONS
+      # ============================================================
+      
+      # Additional JVM options
+      # JVM_OPTS: ""
+      
+      # JVM -XX options (applied before -X options)
+      # JVM_XX_OPTS: ""
+      
+      # Extra arguments passed directly to HytaleServer.jar
+      # EXTRA_ARGS: ""
+      
+      # Download files but don't start server
+      SETUP_ONLY: "false"
+    
+    volumes:
+      # Main data volume - universe, mods, logs, configs
+      - data:/data
+      
+      # Game files volume - downloaded server files
+      - game:/opt/hytale/game
+      
+      # Downloader volume - OAuth credentials
+      - downloader:/opt/hytale/downloader
+      
+      # Optional: Mount custom configuration files
+      # Hytale uses JSON files for config (not CLI flags):
+      # - ./config.json:/data/config.json
+      # - ./permissions.json:/data/permissions.json
+      # - ./whitelist.json:/data/whitelist.json
+      # - ./bans.json:/data/bans.json
+      
+      # Optional: Mount mods directory from host
+      # - ./mods:/data/mods
+
+    # Resource limits
+    # Hytale recommends at least 4GB RAM
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 4G
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+volumes:
+  data:
+    name: hytale-data
+  game:
+    name: hytale-game
+  downloader:
+    name: hytale-downloader

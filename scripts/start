@@ -1,0 +1,43 @@
+#!/bin/bash
+set -e
+
+# Main entrypoint script (itzg-style)
+# Handles user setup and delegates to start-configuration
+
+SCRIPTS_DIR="$(dirname "$0")"
+
+# shellcheck source=start-utils
+. "${SCRIPTS_DIR}/start-utils"
+
+: "${UID:=1000}"
+: "${GID:=1000}"
+
+log "Starting Hytale Server container..."
+
+# Handle running as root and switching to hytale user
+if [ "$(id -u)" = 0 ]; then
+    # Update hytale user/group IDs if needed
+    if [ "$UID" != "$(id -u hytale)" ]; then
+        log "Changing uid of hytale to $UID"
+        usermod -u "$UID" hytale
+    fi
+    
+    if [ "$GID" != "$(id -g hytale)" ]; then
+        log "Changing gid of hytale to $GID"
+        groupmod -o -g "$GID" hytale
+    fi
+    
+    # Fix ownership of data directory
+    if [ "$(stat -c '%u' /data)" != "$UID" ]; then
+        log "Changing ownership of /data to $UID:$GID..."
+        chown -R hytale:hytale /data
+    fi
+    
+    # Fix ownership of game files
+    chown -R hytale:hytale /opt/hytale
+    
+    # Switch to hytale user and continue
+    exec gosu hytale:hytale "${SCRIPTS_DIR}/start-configuration" "$@"
+else
+    exec "${SCRIPTS_DIR}/start-configuration" "$@"
+fi

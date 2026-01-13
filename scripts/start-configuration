@@ -1,0 +1,83 @@
+#!/bin/bash
+set -e
+
+# Configuration and setup script
+# Handles downloading, configuration, and launches the server
+
+SCRIPTS_DIR="$(dirname "$0")"
+
+# shellcheck source=start-utils
+. "${SCRIPTS_DIR}/start-utils"
+
+log "=============================================="
+log "         Hytale Dedicated Server"
+log "=============================================="
+log ""
+
+# Paths
+DOWNLOADER="/opt/hytale/downloader/hytale-downloader"
+CREDENTIALS_FILE="/opt/hytale/downloader/.hytale-downloader-credentials.json"
+GAME_DIR="/opt/hytale/game"
+SERVER_JAR="${GAME_DIR}/Server/HytaleServer.jar"
+AOT_CACHE="${GAME_DIR}/Server/HytaleServer.aot"
+ASSETS_PATH="${GAME_DIR}/Assets.zip"
+
+# ============================================================================
+# Download game files if needed
+# ============================================================================
+
+if isTrue "${AUTO_DOWNLOAD}"; then
+    if [ ! -f "$SERVER_JAR" ]; then
+        log "Server files not found. Starting download..."
+        "${SCRIPTS_DIR}/start-download"
+    else
+        log "Server files already present."
+        
+        if [ "${VERSION}" = "LATEST" ]; then
+            log "Checking for updates..."
+            cd /opt/hytale/downloader
+            LATEST=$($DOWNLOADER -print-version -skip-update-check 2>/dev/null || echo "unknown")
+            log "Latest available version: $LATEST"
+            cd /data
+        fi
+    fi
+fi
+
+# Verify required files
+if [ ! -f "$SERVER_JAR" ]; then
+    logError "HytaleServer.jar not found!"
+    logError ""
+    logError "Please either:"
+    logError "  1. Set AUTO_DOWNLOAD=true to download automatically"
+    logError "  2. Mount server files to /opt/hytale/game/"
+    logError ""
+    logError "See: https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual"
+    exit 1
+fi
+
+if [ ! -f "$ASSETS_PATH" ]; then
+    logError "Assets.zip not found at ${ASSETS_PATH}!"
+    exit 1
+fi
+
+# ============================================================================
+# Setup configuration files
+# ============================================================================
+
+"${SCRIPTS_DIR}/start-setup-config"
+
+# ============================================================================
+# Setup only mode
+# ============================================================================
+
+if isTrue "${SETUP_ONLY}"; then
+    log ""
+    log "SETUP_ONLY=true - Server files are ready. Exiting without starting server."
+    exit 0
+fi
+
+# ============================================================================
+# Launch server
+# ============================================================================
+
+exec "${SCRIPTS_DIR}/start-final"

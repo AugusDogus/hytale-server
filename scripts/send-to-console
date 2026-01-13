@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Send commands to the Hytale server console
+# Usage: send-to-console <command>
+#
+# Note: Hytale doesn't have RCON like Minecraft, so this script
+# provides guidance on how to send commands.
+
+if [ -z "$1" ]; then
+    echo "Usage: send-to-console <command>"
+    echo ""
+    echo "Examples:"
+    echo "  send-to-console /help"
+    echo "  send-to-console /stop"
+    echo ""
+    echo "Note: To send commands to a running Hytale server, use:"
+    echo "  docker attach <container-name>"
+    echo ""
+    echo "Then type your command and press Enter."
+    echo "To detach without stopping: Ctrl+P, Ctrl+Q"
+    exit 1
+fi
+
+# If we're inside the container and the server is running, we could
+# potentially write to a named pipe or use another IPC mechanism.
+# For now, just print instructions.
+
+echo "To send command '$*' to the server:"
+echo ""
+echo "1. Attach to the container:"
+echo "   docker attach hytale-server"
+echo ""
+echo "2. Type the command:"
+echo "   $*"
+echo ""
+echo "3. Detach with: Ctrl+P, Ctrl+Q"
