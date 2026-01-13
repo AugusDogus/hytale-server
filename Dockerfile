@@ -109,7 +109,8 @@ EXPOSE 5520/udp
 VOLUME ["/data"]
 
 # Copy scripts
-COPY --chmod=755 scripts/ /opt/hytale/scripts/
+COPY scripts/ /opt/hytale/scripts/
+RUN chmod -R 755 /opt/hytale/scripts/
 
 # Create symlinks for helper commands
 RUN ln -s /opt/hytale/scripts/send-to-console /usr/local/bin/send-to-console \
